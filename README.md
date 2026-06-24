@@ -149,7 +149,7 @@ sqlmesh-ff lint [--project PATH] [--config PATH] [--checks CHECK,...] [--fail-le
 
 ## Integration example
 
-Example overrides:
+Example overrides. `api_request` should always be named `api_call`. `_id` columns should always be of type `text` and `is_` columns should always be of type `boolean`.
 
 ```yaml
 column_names:
@@ -172,4 +172,3 @@ uv sync --extra dev
 uv run ruff check .
 uv run pytest
 ```
-# sqlmesh-ff
