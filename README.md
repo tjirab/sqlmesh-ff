@@ -171,6 +171,10 @@ column_types:
 
 ```bash
 uv sync --extra dev
+
+# Set up local git pre-push hook (enforces tests & 100% diff coverage):
+git config core.hooksPath .githooks
+
 uv run ruff check .
 uv run pytest
 ```
