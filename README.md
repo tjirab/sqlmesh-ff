@@ -7,8 +7,10 @@ Ships SQLMesh linter rules (classification macros, SQL complexity, metadata, nam
 ## Installation
 
 ```bash
-uv add sqlmesh-ff
-# or from a local checkout:
+# Install directly from GitHub:
+uv add git+https://github.com/tjirab/sqlmesh-ff.git
+
+# Or from a local checkout:
 uv add ../sqlmesh-ff
 ```
 
