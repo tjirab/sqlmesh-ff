@@ -1,14 +1,22 @@
-# Core SQLMesh Configuration Settings
-datasource:
-  type: postgres # Assuming PostgreSQL for robustness, can be changed to sqlite if needed
-  host: localhost
-  port: 5432
-  user: sqlmesh_user
-  password: 
-  database: 
+gateways:
+  local:
+    connection:
+      type: duckdb
+      database: db.db
 
-models:
-  # Directory containing all the model definitions (.py files)
-  dir: models/
-  # Define schema and table names here if not using direct source structure mapping
-  schema: public
+default_gateway: local
+
+model_defaults:
+  dialect: duckdb
+  start: 2026-06-24
+
+linter:
+  enabled: true
+  rules:
+    - nomissingowner
+    - nomissingdescription
+    - nomissinggrain
+    - sqlcomplexity
+    - martmodelnamingconvention
+    - filenameequalsmodelname
+    - noselectstar

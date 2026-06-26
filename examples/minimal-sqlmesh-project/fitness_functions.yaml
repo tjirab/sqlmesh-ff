@@ -1,11 +1,35 @@
-# SQLMesh Fitness Functions (recommended rules)
-rules:
-  - name: non_null_primary_keys
-    description: Enforce that primary keys are never NULL.
-    severity: error
-    apply: true
+layers:
+  order: [sources, core, marts]
 
-  - name: consistency_checks
-    description: Check for data consistency across related tables.
-    severity: warning
-    apply: false # Set to 'true' when ready
+checks:
+  layer_integrity: { enabled: true }
+  custom_exclusions: { enabled: true }
+  schema_contracts: { enabled: true }
+  dependency_graph:
+    enabled: true
+    fan_out_warn: 5
+    fan_out_fail: 10
+    fan_in_warn: 5
+
+rules:
+  no_select_star:
+    enabled: true
+    skip_layers: [sources]
+  mart_naming:
+    enabled: true
+    layer_name: marts
+    rule: prefix_with_subdirectory
+  sql_complexity:
+    enabled: true
+    thresholds:
+      decision_points: [5, 10]
+      cte_count: [3, 5]
+      join_count: [3, 5]
+      line_count: [30, 50]
+  metadata:
+    owner: true
+    description: true
+    grain: true
+    unique_values: true
+  filename_equals_modelname:
+    enabled: true

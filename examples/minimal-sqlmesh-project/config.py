@@ -1,20 +1,12 @@
-import os
-from sqlmesh import Model
+from pathlib import Path
 
-def get_models() -> list[Model]:
-    """
-    Python bootstrap file to load and configure all SQLMesh models 
-    for the project. Models are dynamically loaded from the 'models' subdirectory.
-    """
-    print("Loading SQLMesh models...")
-    
-    # Dynamically import the required function from the module
-    from .models.core_model import core_model
+from sqlmesh.core.config import Config
+from sqlmesh.utils.yaml import load as yaml_load
 
-    return [
-        core_model(),
-        # Add other models here: e.g., secondary_metrics_model(), etc.
-    ]
+from sqlmesh_ff.loader import FitnessLoader
 
-if __name__ == "__main__":
-    print("Bootstrap executed successfully.")
+_settings = yaml_load(Path(__file__).parent / "settings.yaml")
+config = Config.parse_obj(_settings).update_with({
+    "loader": FitnessLoader,
+    "loader_kwargs": {"fitness_functions_config": "fitness_functions.yaml"},
+})
