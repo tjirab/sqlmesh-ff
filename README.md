@@ -168,6 +168,17 @@ column_types:
       data_type: boolean
 ```
 
+## Examples
+
+A complete, runnable example project showcasing the configuration of `sqlmesh-ff` rules, exclusions, contracts, and a continuous integration workflow is located in the [examples/](file:///Users/bartschuijt/git/sqlmesh-ff/examples/) directory.
+
+To run the linter against the example project locally, run:
+```bash
+sqlmesh-ff lint --project examples/minimal-sqlmesh-project
+```
+
+See [examples/minimal-sqlmesh-project/fitness_functions.yaml](file:///Users/bartschuijt/git/sqlmesh-ff/examples/minimal-sqlmesh-project/fitness_functions.yaml) to inspect the configured rules.
+
 ## Development
 
 Initialize your local environment and configure the Git pre-push hook:

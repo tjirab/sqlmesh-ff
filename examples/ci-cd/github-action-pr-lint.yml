@@ -1,0 +1,26 @@
+name: SQLMesh PR Linting
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          
+      - name: Install Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install .
+
+      - name: Run SQLMesh Fitness Functions Linter
+        run: |
+          sqlmesh-ff lint --project examples/minimal-sqlmesh-project
