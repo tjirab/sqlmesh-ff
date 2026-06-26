@@ -9,6 +9,7 @@ from typing import Literal
 from rich import box
 from rich.console import Console
 from rich.panel import Panel
+from rich.rule import Rule
 from rich.table import Table
 from rich.text import Text
 
@@ -34,6 +35,37 @@ CHECK_LABELS: dict[str, str] = {
     "martmodelnamingconvention": "Mart naming convention",
     "ambiguousorinvalidcolumn": "Ambiguous/invalid column",
     "invalidselectstarexpansion": "Invalid SELECT * expansion",
+}
+
+CONNASCENCE_CATEGORIES: dict[str, str] = {
+    # Connascence of Name (CoN)
+    "noselectstar": "Connascence of Name (CoN)",
+    "filenameequalsmodelname": "Connascence of Name (CoN)",
+    "columnnames": "Connascence of Name (CoN)",
+    "martmodelnamingconvention": "Connascence of Name (CoN)",
+    "ambiguousorinvalidcolumn": "Connascence of Name (CoN)",
+    "invalidselectstarexpansion": "Connascence of Name (CoN)",
+
+    # Connascence of Type (CoT)
+    "columntypes": "Connascence of Type (CoT)",
+    "schema_contracts": "Connascence of Type (CoT)",
+
+    # Connascence of Meaning (CoM)
+    "classificationmacros": "Connascence of Meaning (CoM)",
+
+    # Dynamic Coupling
+    "layer_integrity": "Dynamic Coupling & DAG Structure",
+    "custom_exclusions": "Dynamic Coupling & DAG Structure",
+    "dependency_graph": "Dynamic Coupling & DAG Structure",
+
+    # Quality & Metadata
+    "nomissingowner": "Quality & Metadata (Non-Connascence)",
+    "nomissingdescription": "Quality & Metadata (Non-Connascence)",
+    "nomissinggrain": "Quality & Metadata (Non-Connascence)",
+    "nomissingaudits": "Quality & Metadata (Non-Connascence)",
+    "nomissingnotnull": "Quality & Metadata (Non-Connascence)",
+    "nomissinguniquevalues": "Quality & Metadata (Non-Connascence)",
+    "sqlcomplexity": "Quality & Metadata (Non-Connascence)",
 }
 
 ARCHITECTURAL_CHECKS = frozenset(
@@ -181,39 +213,52 @@ def render_lint_report(
         console.print("\n[bold green]All checks passed.[/bold green]")
         return True
 
-    by_model: dict[str, list[LintFinding]] = defaultdict(list)
-    repo_level: list[LintFinding] = []
+    by_category: dict[str, list[LintFinding]] = defaultdict(list)
     for finding in findings:
-        if finding.model:
-            by_model[normalize_model_name(finding.model)].append(finding)
-        else:
-            repo_level.append(finding)
+        category = CONNASCENCE_CATEGORIES.get(finding.check, "Other Checks")
+        by_category[category].append(finding)
+
+    category_order = [
+        "Connascence of Name (CoN)",
+        "Connascence of Type (CoT)",
+        "Connascence of Meaning (CoM)",
+        "Dynamic Coupling & DAG Structure",
+        "Quality & Metadata (Non-Connascence)",
+        "Other Checks",
+    ]
 
     console.print()
-    console.print("[bold]Issues by model[/bold]")
 
-    for model_name in sorted(by_model):
-        model_findings = by_model[model_name]
-        path = next((f.path for f in model_findings if f.path), None)
-        header = f"[bold cyan]{model_name}[/bold cyan]"
-        if path:
-            header += f" [dim]({path})[/dim]"
-        console.print(header)
-        for finding in sorted(model_findings, key=lambda f: (f.severity, f.check)):
+    for category in category_order:
+        cat_findings = by_category.get(category)
+        if not cat_findings:
+            continue
+
+        console.print(Rule(Text(category, style="bold cyan"), align="left"))
+
+        sorted_findings = sorted(
+            cat_findings,
+            key=lambda f: (
+                f.model or "",
+                f.severity,
+                f.check,
+            ),
+        )
+        for finding in sorted_findings:
             icon = "✗" if finding.severity == "error" else "⚠"
             style = "red" if finding.severity == "error" else "yellow"
-            label = CHECK_LABELS.get(finding.check, finding.check)
-            console.print(f"  [{style}]{icon}[/{style}] [dim]{label}:[/dim] {finding.message}")
-        console.print()
 
-    if repo_level:
-        console.print("[bold]Repository-level issues[/bold]")
-        for finding in repo_level:
-            icon = "✗" if finding.severity == "error" else "⚠"
-            style = "red" if finding.severity == "error" else "yellow"
-            label = CHECK_LABELS.get(finding.check, finding.check)
+            model_part = ""
+            if finding.model:
+                model_name = normalize_model_name(finding.model)
+                model_part = f"[bold]{model_name}[/bold]"
+                if finding.path:
+                    model_part += f" [dim]({finding.path})[/dim]"
+            else:
+                model_part = "[bold]Repository-level[/bold]"
+
             console.print(
-                f"  [{style}]{icon}[/{style}] [dim]{label}:[/dim] {finding.message}"
+                f"  [{style}]{icon}[/{style}] {model_part}: {finding.message} [dim]({finding.check})[/dim]"
             )
         console.print()
 
