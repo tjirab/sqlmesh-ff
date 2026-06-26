@@ -36,3 +36,106 @@ def test_summary_full_run_includes_architectural_and_sqlmesh() -> None:
         "classificationmacros",
         "sqlcomplexity",
     }
+
+
+def test_render_lint_report_groups_by_connascence() -> None:
+    from rich.console import Console
+
+    from sqlmesh_ff.report import LintFinding, render_lint_report
+
+    console = Console(record=True, width=120)
+    findings = [
+        LintFinding(
+            check="noselectstar",
+            severity="error",
+            message="SELECT * is prohibited.",
+            model="marts.users",
+            path="models/marts/users.sql",
+        ),
+        LintFinding(
+            check="classificationmacros",
+            severity="warning",
+            message="Inline CASE defines product_type",
+            model="core.orders",
+            path="models/core/orders.sql",
+        ),
+        LintFinding(
+            check="layer_integrity",
+            severity="error",
+            message="depends on downstream model",
+            model="core.orders",
+            path="models/core/orders.sql",
+        ),
+        LintFinding(
+            check="schema_contracts",
+            severity="error",
+            message="some contract violation",
+            model=None,
+            path=None,
+        ),
+    ]
+
+    success = render_lint_report(
+        findings,
+        models_checked=2,
+        executed_checks=["sqlmesh", "layer_integrity"],
+        console=console,
+    )
+
+    assert success is False
+
+    output = console.export_text()
+    assert "Connascence of Name (CoN)" in output
+    assert "Connascence of Meaning (CoM)" in output
+    assert "Dynamic Coupling & DAG Structure" in output
+    assert "marts.users" in output
+    assert "core.orders" in output
+    assert "Repository-level" in output
+
+
+def test_render_lint_report_groups_by_model() -> None:
+    from rich.console import Console
+
+    from sqlmesh_ff.report import LintFinding, render_lint_report
+
+    console = Console(record=True, width=120)
+    findings = [
+        LintFinding(
+            check="noselectstar",
+            severity="error",
+            message="SELECT * is prohibited.",
+            model="marts.users",
+            path="models/marts/users.sql",
+        ),
+        LintFinding(
+            check="classificationmacros",
+            severity="warning",
+            message="Inline CASE defines product_type",
+            model="core.orders",
+            path="models/core/orders.sql",
+        ),
+        LintFinding(
+            check="schema_contracts",
+            severity="error",
+            message="some contract violation",
+            model=None,
+            path=None,
+        ),
+    ]
+
+    success = render_lint_report(
+        findings,
+        models_checked=2,
+        executed_checks=["sqlmesh", "layer_integrity"],
+        console=console,
+        group_by="model",
+    )
+
+    assert success is False
+
+    output = console.export_text()
+    assert "Issues by model" in output
+    assert "Repository-level issues" in output
+    assert "marts.users" in output
+    assert "core.orders" in output
+    assert "Connascence of Name (CoN)" not in output
