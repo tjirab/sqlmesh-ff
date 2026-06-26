@@ -1,0 +1,11 @@
+# SQLMesh Fitness Functions (recommended rules)
+rules:
+  - name: non_null_primary_keys
+    description: Enforce that primary keys are never NULL.
+    severity: error
+    apply: true
+
+  - name: consistency_checks
+    description: Check for data consistency across related tables.
+    severity: warning
+    apply: false # Set to 'true' when ready

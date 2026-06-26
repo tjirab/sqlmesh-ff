@@ -1,0 +1,32 @@
+name: SQLMesh PR Linting
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository Code
+        uses: actions/checkout@v4
+
+      # Example setup steps for SQLMesh (Requires defining environment variables)
+      - name: Set up Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          
+      - name: Install Dependencies
+        run: |
+          pip install sqlmesh[postgres]
+
+      # Step 1: Validate Configuration and Load Models
+      # This step assumes the core bootstrap loads models correctly
+      - name: Run SQLMesh Validation (Linting)
+        run: |
+          python -m sqlmesh.core run_models --config examples/minimal-sqlmesh-project/settings.yaml
+
+      # Optional Step 2: Advanced Linting / Contract Checking
+      # If a dedicated linter tool is used, it would go here.
+      # For simplicity, we rely on the main validation step above, which incorporates checks based on configs.

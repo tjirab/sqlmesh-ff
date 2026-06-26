@@ -1,0 +1,14 @@
+# Core SQLMesh Configuration Settings
+datasource:
+  type: postgres # Assuming PostgreSQL for robustness, can be changed to sqlite if needed
+  host: localhost
+  port: 5432
+  user: sqlmesh_user
+  password: 
+  database: 
+
+models:
+  # Directory containing all the model definitions (.py files)
+  dir: models/
+  # Define schema and table names here if not using direct source structure mapping
+  schema: public
