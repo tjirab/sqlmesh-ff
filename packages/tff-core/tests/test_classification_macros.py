@@ -23,7 +23,6 @@ def test_macro_usage_is_allowed() -> None:
 
 
 def test_classification_macros_rule_missing_file() -> None:
-    from pathlib import Path
     from tff.core.rules.classification_macros import ClassificationMacros
     from tff.core.model import ModelRepresentation
     from tff.core.config import FitnessFunctionsConfig

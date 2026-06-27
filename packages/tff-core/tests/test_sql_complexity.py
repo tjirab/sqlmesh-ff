@@ -22,7 +22,6 @@ def test_format_violations_warn_threshold() -> None:
 
 
 def test_sql_complexity_rule_missing_or_non_sql_file() -> None:
-    from pathlib import Path
     from tff.core.rules.sql_complexity import SqlComplexity
     from tff.core.model import ModelRepresentation
     from tff.core.config import FitnessFunctionsConfig
