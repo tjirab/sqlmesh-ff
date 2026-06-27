@@ -35,14 +35,9 @@ jobs:
           enable-cache: true
       - name: Build all packages
         run: |
-          for pkg in tff-core tff-sqlmesh tff-dbt; do
-            echo "Building packages/$pkg..."
-            cd "packages/$pkg"
-            uv build
-            cd -
-          done
-          mkdir -p dist
-          cp packages/*/dist/* dist/
+          uv build --package tff-core
+          uv build --package tff-sqlmesh
+          uv build --package tff-dbt
       - name: Publish all packages to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:

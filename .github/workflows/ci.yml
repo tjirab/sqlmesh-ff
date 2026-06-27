@@ -21,9 +21,6 @@ jobs:
       - run: uv run diff-cover coverage.xml --compare-branch=origin/main --fail-under=100
       - name: Verify packages build
         run: |
-          for pkg in tff-core tff-sqlmesh tff-dbt; do
-            echo "Checking build for packages/$pkg..."
-            cd "packages/$pkg"
-            uv build
-            cd -
-          done
+          uv build --package tff-core
+          uv build --package tff-sqlmesh
+          uv build --package tff-dbt

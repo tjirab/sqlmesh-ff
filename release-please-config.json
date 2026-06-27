@@ -39,19 +39,6 @@
           "jsonpath": "$.project.version"
         }
       ]
-    },
-    "packages/sqlmesh-ff": {
-      "package-name": "sqlmesh-ff",
-      "release-type": "python",
-      "bump-minor-pre-major": true,
-      "bump-patch-for-minor-pre-major": true,
-      "extra-files": [
-        {
-          "type": "toml",
-          "path": "pyproject.toml",
-          "jsonpath": "$.project.version"
-        }
-      ]
     }
   },
   "plugins": [
@@ -61,8 +48,7 @@
       "packages": [
         "packages/tff-core",
         "packages/tff-sqlmesh",
-        "packages/tff-dbt",
-        "packages/sqlmesh-ff"
+        "packages/tff-dbt"
       ]
     }
   ]
