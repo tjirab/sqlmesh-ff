@@ -182,6 +182,13 @@ sqlmesh-ff lint --project examples/minimal-sqlmesh-project
 
 See [examples/minimal-sqlmesh-project/fitness_functions.yaml](file:///Users/bartschuijt/git/sqlmesh-ff/examples/minimal-sqlmesh-project/fitness_functions.yaml) to inspect the configured rules.
 
+## Further reading & learning resources
+
+To learn more about the architectural concepts behind fitness functions and connascence, check out these resources:
+
+- [Connascence.io](https://connascence.io/) — A guide to software coupling metrics (connascence of name, type, meaning, algorithm, etc.), which inspired the classification and structure of the linter report findings.
+- [Evolutionary Architecture](https://evolutionaryarchitecture.com/) — The homepage for *Building Evolutionary Architectures*, which introduces the concept of architectural fitness functions to guide design changes over time.
+
 ## Development
 
 Initialize your local environment and configure the Git pre-push hook:
