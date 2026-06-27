@@ -19,8 +19,10 @@ pip install sqlmesh-ff
 
 ## Quick start
 
-1. Add `fitness_functions.yaml` to your SQLMesh project root (see [Configuration](#configuration)).
-2. Add a small `config.py` bootstrap (see [Where configuration lives](#where-configuration-lives)) — SQLMesh requires the loader as a Python class and cannot load `config.py` and `config.yaml` in the same folder.
+Your fitness function settings live in **`fitness_functions.yaml`** — that is the config you edit. The project `config.py` is optional SQLMesh wiring only (see below).
+
+1. Add `fitness_functions.yaml` to your SQLMesh project root with your thresholds and rule toggles (see [Configuration](#configuration)).
+2. **Optional — only for native SQLMesh commands** (`sqlmesh plan`, etc.): add a small `config.py` bootstrap that registers `FitnessLoader` and points at `fitness_functions.yaml` (see [Where configuration lives](#where-configuration-lives)). SQLMesh requires the loader as a Python class and cannot load `config.py` and `config.yaml` in the same folder. You do **not** put fitness settings in `config.py`.
 3. Run lint:
 
 ```bash
