@@ -18,13 +18,13 @@ graph TD
     end
 
     subgraph SQLMesh Adapter [tff-sqlmesh]
-        SM_Loader[FitnessLoader] -->|Wraps via type()| Rules
-        SM_Runner[Runner] -->|Maps SQLMesh Model| Model
+        SM_Loader[FitnessLoader] -->|"Wraps via type()"| Rules
+        SM_Runner[Runner] -->|"Maps SQLMesh Model"| Model
         SM_CLI[tff-sqlmesh CLI] --> SM_Runner
     end
 
     subgraph dbt Adapter [tff-dbt]
-        DBT_Manifest[Manifest Parser] -->|Maps nodes & tests| Model
+        DBT_Manifest[Manifest Parser] -->|"Maps nodes & tests"| Model
         DBT_Runner[Runner] --> DBT_Manifest
         DBT_CLI[tff-dbt CLI] --> DBT_Runner
     end
@@ -36,9 +36,9 @@ graph TD
 ```
 
 ### Core Architecture Components
-1. **[tff-core](file:///Users/bartschuijt/git/sqlmesh-ff/packages/tff-core)**: Contains the base model definitions (`ModelRepresentation`), abstract rule classes, the 13 built-in rules/checks, and the console rendering engine using `rich`. It has **no dependency** on SQLMesh or dbt.
-2. **[tff-sqlmesh](file:///Users/bartschuijt/git/sqlmesh-ff/packages/tff-sqlmesh)**: Plugs directly into SQLMesh. It maps native SQLMesh models into `ModelRepresentation` objects and wraps core rules dynamically using Python's `type()` constructor.
-3. **[tff-dbt](file:///Users/bartschuijt/git/sqlmesh-ff/packages/tff-dbt)**: Parsers compile-time artifacts (`manifest.json`) and resolves references, schemas, and tests, running core rules on the compiled model layout.
+1. **[tff-core](../packages/tff-core)**: Contains the base model definitions (`ModelRepresentation`), abstract rule classes, the 13 built-in rules/checks, and the console rendering engine using `rich`. It has **no dependency** on SQLMesh or dbt.
+2. **[tff-sqlmesh](../packages/tff-sqlmesh)**: Plugs directly into SQLMesh. It maps native SQLMesh models into `ModelRepresentation` objects and wraps core rules dynamically using Python's `type()` constructor.
+3. **[tff-dbt](../packages/tff-dbt)**: Parsers compile-time artifacts (`manifest.json`) and resolves references, schemas, and tests, running core rules on the compiled model layout.
 
 ---
 

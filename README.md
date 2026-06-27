@@ -13,9 +13,9 @@ TFF allows you to enforce architectural layout boundaries, layer structure polic
 
 Setup and usage details differ depending on your pipeline engine. Refer to the corresponding guide:
 
-* 📐 **SQLMesh Integration**: See [docs/sqlmesh.md](file:///Users/bartschuijt/git/sqlmesh-ff/docs/sqlmesh.md)
-* ⚡ **dbt Integration**: See [docs/dbt.md](file:///Users/bartschuijt/git/sqlmesh-ff/docs/dbt.md)
-* 🏗️ **Architecture & Contributor Guide**: See [docs/contributing.md](file:///Users/bartschuijt/git/sqlmesh-ff/docs/contributing.md)
+* 📐 **SQLMesh Integration**: See [docs/sqlmesh.md](docs/sqlmesh.md)
+* ⚡ **dbt Integration**: See [docs/dbt.md](docs/dbt.md)
+* 🏗️ **Architecture & Contributor Guide**: See [docs/contributing.md](docs/contributing.md)
 
 ---
 
