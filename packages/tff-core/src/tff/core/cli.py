@@ -183,7 +183,6 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
         set_ff_config(config)
-
         if args.command == "lint":
             checks = _parse_checks(args.checks)
         else:
