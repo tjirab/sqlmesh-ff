@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from tff.core.config import load_fitness_config
+from tff.core.config import load_fitness_config, resolve_project_path
 from tff.core.context import set_ff_config
 from tff.core.report import render_lint_report
 
@@ -177,7 +177,11 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     # Info subcommand
-    info_parser = subparsers.add_parser("info", help="Show configuration and environment information")
+    info_parser = subparsers.add_parser(
+        "info",
+        help="Show configuration and environment information",
+        description="Show configuration and environment information",
+    )
     info_parser.add_argument(
         "--project",
         type=Path,
@@ -233,7 +237,8 @@ def main(argv: list[str] | None = None) -> int:
                 console.print(f"[red]Error detecting provider: {e}[/red]")
                 return 1
         config_path = args.config
-        config_exists = Path(config_path).is_file() if not Path(config_path).is_absolute() else Path(config_path).exists()
+        resolved_config = project_root / config_path if not Path(config_path).is_absolute() else Path(config_path)
+        config_exists = resolved_config.is_file()
         console.print("[bold]TFF Info[/bold]")
         table = Table(show_header=False, box=None)
         table.add_row("Project root:", str(project_root))

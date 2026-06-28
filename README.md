@@ -57,6 +57,7 @@ tff [command] [options]
 
 * **`lint`**: Run all enabled fitness checks and format lint reports.
 * **`health`**: Calculate and report overall project fitness health scores.
+* **`info`**: Show diagnostic information about the project environment, configuration files, and adapter versions.
 * **`help`**: Print help information for the CLI or specific subcommands.
 
 ### Common Options
@@ -76,6 +77,11 @@ For detailed option explanations, run `tff help <command>` or `tff <command> --h
 * `--project PATH`, `--config PATH`, `--provider {auto,dbt,sqlmesh}`, `--dialect DIALECT`: (Same as above)
 * `--fail-under SCORE`: Exit non-zero when overall health score (0.0 - 100.0) is below this threshold (default: `0.0`).
 
+#### `tff info`
+* `--project PATH`: Path to the project root directory (default: current directory).
+* `--config PATH`: Path to `fitness_functions.yaml` relative to project root (default: `fitness_functions.yaml`).
+* `--provider {auto,dbt,sqlmesh}`: Pipeline engine provider (default: auto-detected).
+
 ### Quick Start Examples
 
 Run linting on the current project:
@@ -86,6 +92,11 @@ tff lint
 Show project health report and require a score of at least 80% to pass:
 ```bash
 tff health --fail-under 80
+```
+
+Show configuration, adapter versions, and provider files for the current project:
+```bash
+tff info
 ```
 
 Get detailed help for the `lint` subcommand:
