@@ -120,9 +120,39 @@ def main(argv: list[str] | None = None) -> int:
         help="SQL dialect of models (dbt only; auto-inferred by default)",
     )
 
+    health_parser = subparsers.add_parser("health", help="Show project health report and scores")
+    health_parser.add_argument(
+        "--project",
+        type=Path,
+        default=Path.cwd(),
+        help="Project root directory (default: current directory)",
+    )
+    health_parser.add_argument(
+        "--config",
+        default="fitness_functions.yaml",
+        help="Path to fitness_functions.yaml (relative to project root)",
+    )
+    health_parser.add_argument(
+        "--provider",
+        choices=["auto", "dbt", "sqlmesh"],
+        default="auto",
+        help="Pipeline engine provider (default: auto-detected)",
+    )
+    health_parser.add_argument(
+        "--dialect",
+        default=None,
+        help="SQL dialect of models (dbt only; auto-inferred by default)",
+    )
+    health_parser.add_argument(
+        "--fail-under",
+        type=float,
+        default=0.0,
+        help="Exit non-zero when overall health score is below this threshold (0-100)",
+    )
+
     args = parser.parse_args(argv)
 
-    if args.command == "lint":
+    if args.command in ("lint", "health"):
         logging.basicConfig(level=logging.ERROR)
         project_root = args.project.resolve()
 
@@ -153,7 +183,10 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
         set_ff_config(config)
-        checks = _parse_checks(args.checks)
+        if args.command == "lint":
+            checks = _parse_checks(args.checks)
+        else:
+            checks = None  # Always run all checks for health report
 
         # 4. Run checks
         try:
@@ -179,15 +212,30 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Error executing checks: {e}", file=sys.stderr)
             return 1
 
-        # 5. Render report
-        passed = render_lint_report(
-            findings,
-            models_checked=models_checked,
-            executed_checks=executed_checks,
-            fail_level=args.fail_level,  # type: ignore[arg-type]
-            group_by=args.group_by,  # type: ignore[arg-type]
-        )
-        return 0 if passed else 1
+        if args.command == "lint":
+            # 5. Render report
+            passed = render_lint_report(
+                findings,
+                models_checked=models_checked,
+                executed_checks=executed_checks,
+                fail_level=args.fail_level,  # type: ignore[arg-type]
+                group_by=args.group_by,  # type: ignore[arg-type]
+            )
+            return 0 if passed else 1
+        else:
+            # health command
+            from tff.core.health import calculate_health_scores, render_health_report
+            scores = calculate_health_scores(findings, models_checked, config, provider)
+            render_health_report(scores, config, provider)
+
+            overall_score = scores["overall_score"]
+            if args.fail_under > 0.0 and overall_score < args.fail_under:
+                print(
+                    f"Error: Project health score {overall_score:.1f}% is below threshold {args.fail_under:.1f}%",
+                    file=sys.stderr,
+                )
+                return 1
+            return 0
 
     return 1
 

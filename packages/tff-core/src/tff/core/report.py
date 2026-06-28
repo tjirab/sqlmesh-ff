@@ -37,6 +37,7 @@ CHECK_LABELS: dict[str, str] = {
     "invalidselectstarexpansion": "Invalid SELECT * expansion",
     "nopositionalgroupbyororderby": "No positional GROUP BY or ORDER BY",
     "materialization_depth": "Materialization depth",
+    "environmentagnosticreferences": "Environment-agnostic references",
 }
 
 CONNASCENCE_CATEGORIES: dict[str, str] = {
@@ -63,6 +64,7 @@ CONNASCENCE_CATEGORIES: dict[str, str] = {
     "custom_exclusions": "Dynamic Coupling & DAG Structure",
     "dependency_graph": "Dynamic Coupling & DAG Structure",
     "materialization_depth": "Dynamic Coupling & DAG Structure",
+    "environmentagnosticreferences": "Dynamic Coupling & DAG Structure",
 
 
     # Quality & Metadata

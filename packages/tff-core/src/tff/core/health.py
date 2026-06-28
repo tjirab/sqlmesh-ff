@@ -1,0 +1,414 @@
+"""Scoring logic and Rich report rendering for project health."""
+
+from __future__ import annotations
+
+import re
+from collections import defaultdict
+from typing import Any
+
+from rich.console import Console, Group
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
+
+from tff.core.config import FitnessFunctionsConfig
+from tff.core.report import CHECK_LABELS, CONNASCENCE_CATEGORIES, LintFinding
+
+PROJECT_LEVEL_CHECKS = {
+    "layer_integrity",
+    "custom_exclusions",
+    "schema_contracts",
+    "dependency_graph",
+    "materialization_depth",
+}
+
+CATEGORIES = {
+    "Connascence of Name (CoN)": [
+        "banselectstar",
+        "filenameequalsmodelname",
+        "columnnames",
+        "martmodelnamingconvention",
+        "ambiguousorinvalidcolumn",
+        "invalidselectstarexpansion",
+    ],
+    "Connascence of Type (CoT)": [
+        "columntypes",
+        "schema_contracts",
+    ],
+    "Connascence of Position (CoP)": [
+        "nopositionalgroupbyororderby",
+    ],
+    "Connascence of Meaning (CoM)": [
+        "classificationmacros",
+    ],
+    "Dynamic Coupling & DAG Structure": [
+        "layer_integrity",
+        "custom_exclusions",
+        "dependency_graph",
+        "materialization_depth",
+        "environmentagnosticreferences",
+    ],
+    "Quality & Metadata (Non-Connascence)": [
+        "nomissingowner",
+        "nomissingdescription",
+        "nomissinggrain",
+        "nomissingnotnull",
+        "nomissinguniquevalues",
+        "sqlcomplexity",
+    ],
+}
+
+
+def is_check_enabled(config: FitnessFunctionsConfig, check_name: str, provider: str) -> bool:
+    """Determine if a check/rule is enabled in the configuration."""
+    if check_name == "layer_integrity":
+        return config.checks.layer_integrity.enabled
+    if check_name == "custom_exclusions":
+        return config.checks.custom_exclusions.enabled
+    if check_name == "schema_contracts":
+        return config.checks.schema_contracts.enabled
+    if check_name == "dependency_graph":
+        return config.checks.dependency_graph.enabled
+    if check_name == "materialization_depth":
+        return config.checks.materialization_depth.enabled
+    if check_name == "classificationmacros":
+        return config.rules.classification_macros.enabled
+    if check_name == "sqlcomplexity":
+        return config.rules.sql_complexity.enabled
+    if check_name == "martmodelnamingconvention":
+        return config.rules.mart_naming.enabled
+    if check_name == "columnnames":
+        return config.rules.column_names.enabled
+    if check_name == "columntypes":
+        return config.rules.column_types.enabled
+    if check_name == "filenameequalsmodelname":
+        return config.rules.filename_equals_modelname.enabled
+    if check_name == "banselectstar":
+        return config.rules.ban_select_star.enabled
+    if check_name == "nopositionalgroupbyororderby":
+        return config.rules.no_positional_group_by_or_order_by.enabled
+    if check_name == "environmentagnosticreferences":
+        return config.rules.environment_agnostic_references.enabled
+
+    # Metadata sub-rules
+    if check_name == "nomissingowner":
+        return config.rules.metadata.enabled and config.rules.metadata.owner
+    if check_name == "nomissingdescription":
+        return config.rules.metadata.enabled and config.rules.metadata.description
+    if check_name == "nomissinggrain":
+        return config.rules.metadata.enabled and config.rules.metadata.grain
+    if check_name == "nomissingnotnull":
+        return config.rules.metadata.enabled and config.rules.metadata.not_null
+    if check_name == "nomissinguniquevalues":
+        return config.rules.metadata.enabled and config.rules.metadata.unique_values
+
+    # SQLMesh native rules
+    if check_name in {"ambiguousorinvalidcolumn", "invalidselectstarexpansion"}:
+        return provider == "sqlmesh"
+
+    return False
+
+
+def calculate_health_scores(
+    findings: list[LintFinding],
+    models_checked: int,
+    config: FitnessFunctionsConfig,
+    provider: str,
+) -> dict[str, Any]:
+    """Calculate health scores based on findings and enabled checks."""
+    enabled_checks = set()
+    all_known_checks = set()
+    for cat_checks in CATEGORIES.values():
+        all_known_checks.update(cat_checks)
+
+    # Gather enabled status
+    for check in all_known_checks:
+        if is_check_enabled(config, check, provider):
+            enabled_checks.add(check)
+
+    # If any finding check is not in all_known_checks, we treat it as enabled
+    for f in findings:
+        if f.check not in all_known_checks:
+            enabled_checks.add(f.check)
+
+    check_scores: dict[str, float] = {}
+    check_findings: dict[str, list[LintFinding]] = defaultdict(list)
+    for f in findings:
+        check_findings[f.check].append(f)
+
+    # Calculate scores per check
+    for check in enabled_checks:
+        cf = check_findings[check]
+        if not cf:
+            check_scores[check] = 100.0
+            continue
+
+        if check in PROJECT_LEVEL_CHECKS:
+            # Project level check
+            if any(f.severity == "error" for f in cf):
+                check_scores[check] = 0.0
+            elif any(f.severity == "warning" for f in cf):
+                check_scores[check] = 50.0
+            else:
+                check_scores[check] = 100.0
+        else:
+            # Model level check
+            error_count = 0
+            warning_count = 0
+            error_models = set()
+            warning_models = set()
+            for f in cf:
+                if f.severity == "error":
+                    if f.model:
+                        error_models.add(f.model)
+                    else:
+                        error_count += 1
+                else:
+                    if f.model:
+                        warning_models.add(f.model)
+                    else:
+                        warning_count += 1
+
+            # Warnings count only for models without errors
+            warning_models = warning_models - error_models
+            E = len(error_models) + error_count
+            W = len(warning_models) + warning_count
+            M = models_checked
+
+            if M <= 0:
+                check_scores[check] = 100.0
+            else:
+                score = 100.0 * (1.0 - (E + 0.5 * W) / M)
+                check_scores[check] = max(0.0, score)
+
+    # Calculate category scores
+    category_scores: dict[str, float | None] = {}
+    for cat_name, cat_checks in CATEGORIES.items():
+        enabled_cat_checks = [c for c in cat_checks if c in enabled_checks]
+        if not enabled_cat_checks:
+            category_scores[cat_name] = None
+        else:
+            category_scores[cat_name] = sum(check_scores[c] for c in enabled_cat_checks) / len(enabled_cat_checks)
+
+    # Handle "Other Checks" category if findings exist for unknown checks
+    unknown_enabled = [c for c in enabled_checks if c not in all_known_checks]
+    if unknown_enabled:
+        category_scores["Other Checks"] = sum(check_scores[c] for c in unknown_enabled) / len(unknown_enabled)
+    else:
+        category_scores["Other Checks"] = None
+
+    # Calculate overall score
+    if not enabled_checks:
+        overall_score = 100.0
+    else:
+        overall_score = sum(check_scores.values()) / len(enabled_checks)
+
+    return {
+        "overall_score": overall_score,
+        "check_scores": check_scores,
+        "category_scores": category_scores,
+        "enabled_checks": enabled_checks,
+        "check_findings": check_findings,
+    }
+
+
+def make_progress_bar(score: float, width: int = 15) -> str:
+    """Generate a colored progress bar block string."""
+    filled = int(round(score / 100 * width))
+    bar = "█" * filled + "░" * (width - filled)
+    
+    if score >= 90:
+        return f"[green]{bar}[/green]"
+    if score >= 70:
+        return f"[yellow]{bar}[/yellow]"
+    return f"[red]{bar}[/red]"
+
+
+def render_health_report(
+    scores: dict[str, Any],
+    config: FitnessFunctionsConfig,
+    provider: str,
+    console: Console | None = None,
+) -> None:
+    """Render a beautiful CLI health report using rich."""
+    console = console or Console()
+    
+    overall_score = scores["overall_score"]
+    enabled_checks = scores["enabled_checks"]
+    category_scores = scores["category_scores"]
+    check_scores = scores["check_scores"]
+    check_findings = scores["check_findings"]
+    
+    score_color = "green" if overall_score >= 90 else "yellow" if overall_score >= 70 else "red"
+    
+    score_panel = Panel(
+        Text.assemble(
+            ("Overall Project Health Score: ", "bold white"),
+            (f"{overall_score:.1f}%", f"bold {score_color}"),
+            ("\n", ""),
+            (f"Active checks: {len(enabled_checks)}  ·  Categories: {sum(1 for v in category_scores.values() if v is not None)}", "dim")
+        ),
+        title="[bold cyan]TFF PROJECT HEALTH REPORT[/bold cyan]",
+        border_style="cyan",
+        padding=(1, 2),
+    )
+    console.print(score_panel)
+    console.print()
+    
+    # 1. Summary Table
+    summary_table = Table(
+        show_header=True,
+        header_style="bold cyan",
+        border_style="dim",
+    )
+    summary_table.add_column("Connascence Category", style="bold", width=40)
+    summary_table.add_column("Active Checks", justify="center")
+    summary_table.add_column("Errors", justify="right")
+    summary_table.add_column("Warnings", justify="right")
+    summary_table.add_column("Health Score", justify="left")
+    
+    for cat_name, cat_score in category_scores.items():
+        if cat_score is None:
+            continue
+            
+        cat_checks = CATEGORIES.get(cat_name, [c for c in enabled_checks if c not in CONNASCENCE_CATEGORIES])
+        enabled_cat_checks = [c for c in cat_checks if c in enabled_checks]
+        
+        # Count errors & warnings
+        errors = 0
+        warnings = 0
+        for c in enabled_cat_checks:
+            for f in check_findings[c]:
+                if f.severity == "error":
+                    errors += 1
+                else:
+                    warnings += 1
+                    
+        total_in_cat = len(cat_checks) if cat_name in CATEGORIES else len(enabled_cat_checks)
+        checks_ratio = f"{len(enabled_cat_checks)}/{total_in_cat}"
+        
+        error_cell = Text(str(errors) if errors else "·", style="red" if errors else "dim")
+        warn_cell = Text(str(warnings) if warnings else "·", style="yellow" if warnings else "dim")
+        
+        bar = make_progress_bar(cat_score)
+        score_cell = Text.from_markup(f"{bar} {cat_score:.1f}%")
+        
+        summary_table.add_row(
+            cat_name,
+            checks_ratio,
+            error_cell,
+            warn_cell,
+            score_cell,
+        )
+        
+    summary_panel = Panel(
+        summary_table,
+        title="[bold cyan]HEALTH SCORE BY CATEGORY[/bold cyan]",
+        border_style="cyan",
+        padding=(1, 2),
+    )
+    console.print(summary_panel)
+    console.print()
+    
+    # 2. Detailed Breakdown
+    breakdown_renderables = []
+    
+    for cat_name, cat_checks in CATEGORIES.items():
+        # Only print category if it contains enabled checks
+        enabled_cat_checks = [c for c in cat_checks if c in enabled_checks]
+        if not enabled_cat_checks:
+            continue
+            
+        if breakdown_renderables:
+            breakdown_renderables.append(Text())
+            
+        breakdown_renderables.append(Text.from_markup(f"[bold cyan]● {cat_name}[/bold cyan]"))
+        
+        for check in cat_checks:
+            label = CHECK_LABELS.get(check, check)
+            
+            if check in enabled_checks:
+                score = check_scores[check]
+                cf = check_findings[check]
+                
+                # Determine status icon and color
+                if score == 100.0:
+                    icon = "[green]✓[/green]"
+                    score_text = "[green]100.0%[/green]"
+                    violation_text = ""
+                else:
+                    icon_char = "✗" if score < 70 else "⚠"
+                    color = "red" if score < 70 else "yellow"
+                    icon = f"[{color}]{icon_char}[/{color}]"
+                    score_text = f"[{color}]{score:.1f}%[/{color}]"
+                    
+                    errors = sum(1 for f in cf if f.severity == "error")
+                    warnings = sum(1 for f in cf if f.severity == "warning")
+                    parts = []
+                    if errors:
+                        parts.append(f"{errors} error{'s' if errors != 1 else ''}")
+                    if warnings:
+                        parts.append(f"{warnings} warning{'s' if warnings != 1 else ''}")
+                    violation_text = f" [dim]({', '.join(parts)})[/dim]"
+                    
+                prefix = f"  {icon} {label} [dim]({check})[/dim]"
+                clean_prefix = re.sub(r"\[.*?\]", "", prefix)
+                dot_count = max(2, 65 - len(clean_prefix))
+                dots = "." * dot_count
+                
+                breakdown_renderables.append(Text.from_markup(f"{prefix} {dots} {score_text}{violation_text}"))
+            else:
+                prefix = f"  [dim]- {label} ({check})[/dim]"
+                clean_prefix = re.sub(r"\[.*?\]", "", prefix)
+                dot_count = max(2, 65 - len(clean_prefix))
+                dots = "." * dot_count
+                breakdown_renderables.append(Text.from_markup(f"{prefix} [dim]{dots} Disabled[/dim]"))
+                
+    # Print other checks if any
+    all_known_checks = set()
+    for cat_checks in CATEGORIES.values():
+        all_known_checks.update(cat_checks)
+    unknown_enabled = [c for c in enabled_checks if c not in all_known_checks]
+    if unknown_enabled:
+        if breakdown_renderables:
+            breakdown_renderables.append(Text())
+        breakdown_renderables.append(Text.from_markup("[bold cyan]● Other Checks[/bold cyan]"))
+        for check in unknown_enabled:
+            label = CHECK_LABELS.get(check, check)
+            score = check_scores[check]
+            cf = check_findings[check]
+            
+            if score == 100.0:
+                icon = "[green]✓[/green]"
+                score_text = "[green]100.0%[/green]"
+                violation_text = ""
+            else:
+                icon_char = "✗" if score < 70 else "⚠"
+                color = "red" if score < 70 else "yellow"
+                icon = f"[{color}]{icon_char}[/{color}]"
+                score_text = f"[{color}]{score:.1f}%[/{color}]"
+                
+                errors = sum(1 for f in cf if f.severity == "error")
+                warnings = sum(1 for f in cf if f.severity == "warning")
+                parts = []
+                if errors:
+                    parts.append(f"{errors} error{'s' if errors != 1 else ''}")
+                if warnings:
+                    parts.append(f"{warnings} warning{'s' if warnings != 1 else ''}")
+                violation_text = f" [dim]({', '.join(parts)})[/dim]"
+                
+            prefix = f"  {icon} {label} [dim]({check})[/dim]"
+            clean_prefix = re.sub(r"\[.*?\]", "", prefix)
+            dot_count = max(2, 65 - len(clean_prefix))
+            dots = "." * dot_count
+            
+            breakdown_renderables.append(Text.from_markup(f"{prefix} {dots} {score_text}{violation_text}"))
+
+    breakdown_panel = Panel(
+        Group(*breakdown_renderables),
+        title="[bold cyan]DETAILED BREAKDOWN BY CHECK[/bold cyan]",
+        border_style="cyan",
+        padding=(1, 2),
+    )
+    console.print(breakdown_panel)
+    console.print()
