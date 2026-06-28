@@ -160,3 +160,24 @@ def test_materialization_depth_cycle_protection():
     # get_view_depth("view_a") -> get_view_depth("view_b") -> get_view_depth("view_a") [detected cycle, returns 0]
     # So "view_b" returns 0 + 1 = 1, "view_a" returns 1 + 1 = 2. Neither exceeds warning threshold (3).
     assert len(findings) == 0
+
+
+def test_materialization_depth_disabled():
+    models = {
+        "view_a": ModelRepresentation(
+            name="view_a",
+            path="models/marts/view_a.sql",
+            dialect="duckdb",
+            materialized="view",
+        ),
+    }
+    config = FitnessFunctionsConfig(
+        checks=ChecksConfig(
+            materialization_depth=MaterializationDepthCheckConfig(
+                enabled=False
+            )
+        )
+    )
+    findings = collect_materialization_depth_findings(models, config)
+    assert len(findings) == 0
+

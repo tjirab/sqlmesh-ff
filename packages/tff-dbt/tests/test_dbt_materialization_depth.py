@@ -31,6 +31,17 @@ def test_dbt_materialization_depth_integration(tmp_path: Path):
             },
         }
 
+    # Add a seed node to manifest
+    nodes["seed.my_project.my_seed"] = {
+        "resource_type": "seed",
+        "name": "my_seed",
+        "original_file_path": "seeds/my_seed.csv",
+        "columns": {},
+        "depends_on": {
+            "nodes": []
+        }
+    }
+
     manifest_data = {
         "nodes": nodes,
         "sources": {
@@ -75,4 +86,10 @@ def test_dbt_materialization_depth_integration(tmp_path: Path):
 
     assert len(errors) == 2
     assert {e.model for e in errors} == {"model.my_project.view_4", "model.my_project.view_5"}
+
+    # Assert seed materialized mapping
+    from tff.dbt.manifest import load_dbt_models
+    mapped = load_dbt_models(tmp_path)
+    assert mapped["seed.my_project.my_seed"].materialized == "seed"
+
 
