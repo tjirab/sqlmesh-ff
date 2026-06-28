@@ -248,6 +248,145 @@ def test_main_unhandled_command():
         assert exit_code == 1
 
 
+def test_help_subcommand(capsys):
+    # Test tff help
+    assert main(["help"]) == 0
+    captured = capsys.readouterr()
+    assert "Run Transformation Fitness Function (tff) checks" in captured.out
+
+    # Test tff help lint
+    assert main(["help", "lint"]) == 0
+    captured = capsys.readouterr()
+    assert "--fail-level" in captured.out
+
+    # Test tff help health
+    assert main(["help", "health"]) == 0
+    captured = capsys.readouterr()
+    assert "--fail-under" in captured.out
+
+
+def test_invalid_command_error_hint(capsys):
+    # Test tff foo
+    with pytest.raises(SystemExit) as excinfo:
+        main(["foo"])
+    assert excinfo.value.code == 2
+    captured = capsys.readouterr()
+    assert "invalid choice: 'foo'" in captured.err
+    assert "For help, try 'tff --help'" in captured.err
+
+
+def test_missing_command_error_hint(capsys):
+    # Test tff (no command)
+    with pytest.raises(SystemExit) as excinfo:
+        main([])
+    assert excinfo.value.code == 2
+    captured = capsys.readouterr()
+    assert "the following arguments are required: command" in captured.err
+    assert "For help, try 'tff --help'" in captured.err
+
+
+def test_subcommand_invalid_argument_error_hint(capsys):
+    # Test tff lint --invalid-option
+    with pytest.raises(SystemExit) as excinfo:
+        main(["lint", "--invalid-option"])
+    assert excinfo.value.code == 2
+    captured = capsys.readouterr()
+    assert "unrecognized arguments: --invalid-option" in captured.err
+    assert "For help, try 'tff lint --help'" in captured.err
+
+
+def test_help_info_subcommand(capsys):
+    assert main(["help", "info"]) == 0
+    captured = capsys.readouterr()
+    assert "Show configuration and environment information" in captured.out
+    assert "--provider" in captured.out
+
+
+def test_info_command_dbt(tmp_path: Path, capsys):
+    dbt_project = tmp_path / "dbt_project.yml"
+    dbt_project.touch()
+    
+    config_file = tmp_path / "fitness_functions.yaml"
+    config_file.write_text("contract_groups_path: linter_contract_groups.json\nexclusions_path: linter_exclusions.json")
+    
+    (tmp_path / "linter_contract_groups.json").touch()
+    (tmp_path / "target").mkdir()
+    (tmp_path / "target" / "manifest.json").touch()
+
+    import importlib.metadata
+
+    with patch("importlib.metadata.version") as mock_version:
+        def mock_version_side_effect(pkg):
+            if pkg == "tff-core":
+                return "1.0.0"
+            raise importlib.metadata.PackageNotFoundError("Package not found")
+        mock_version.side_effect = mock_version_side_effect
+        exit_code = main(["info", "--project", str(tmp_path), "--config", "fitness_functions.yaml"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        
+        assert "TFF Info" in captured.out
+        assert "Project root:" in captured.out
+        assert "Provider:" in captured.out
+        assert "dbt" in captured.out
+        assert "fitness_functions.yaml" in captured.out
+        assert "Contract groups:" in captured.out
+        assert "Exclusions:" in captured.out
+        assert "Adapter Versions" in captured.out
+        assert "tff-core" in captured.out
+        assert "not installed" in captured.out
+        assert "Provider Files" in captured.out
+        assert "dbt_project.yml" in captured.out
+        assert "manifest.json" in captured.out
+
+
+def test_info_command_sqlmesh(tmp_path: Path, capsys):
+    (tmp_path / "config.py").touch()
+    
+    with patch("importlib.metadata.version") as mock_version:
+        mock_version.return_value = "0.1.0"
+        exit_code = main(["info", "--project", str(tmp_path), "--provider", "sqlmesh"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        
+        assert "sqlmesh" in captured.out
+        assert "config.py" in captured.out
+        assert "settings.yaml" in captured.out
+
+
+def test_info_command_detect_failure(tmp_path: Path, capsys):
+    exit_code = main(["info", "--project", str(tmp_path)])
+    assert exit_code == 1
+    captured = capsys.readouterr()
+    assert "Error detecting provider" in captured.out
+
+
+def test_info_command_invalid_config(tmp_path: Path, capsys):
+    (tmp_path / "dbt_project.yml").touch()
+    config_file = tmp_path / "fitness_functions.yaml"
+    config_file.write_text("invalid: yaml: content: :")
+    
+    exit_code = main(["info", "--project", str(tmp_path), "--config", "fitness_functions.yaml"])
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    assert "Failed to load config:" in captured.out
+
+
+def test_argv_fallback_error(capsys):
+    from tff.core.cli import TFFArgumentParser
+    parser = TFFArgumentParser(prog="tff")
+    TFFArgumentParser._current_argv = None
+    
+    with patch("sys.argv", ["tff", "lint", "--invalid-arg"]):
+        with pytest.raises(SystemExit) as excinfo:
+            parser.error("some error")
+        assert excinfo.value.code == 2
+        captured = capsys.readouterr()
+        assert "For help, try 'tff lint --help'" in captured.err
+
+
+
+
 
 
 

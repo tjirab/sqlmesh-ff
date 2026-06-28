@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from tff.core.config import load_fitness_config
+from tff.core.config import load_fitness_config, resolve_project_path
 from tff.core.context import set_ff_config
 from tff.core.report import render_lint_report
 
@@ -71,12 +71,38 @@ def _parse_checks(value: str | None) -> list[str] | None:
     return [part.strip() for part in value.split(",") if part.strip()]
 
 
+class TFFArgumentParser(argparse.ArgumentParser):
+    _current_argv: list[str] | None = None
+
+    def error(self, message: str) -> None:
+        self.print_usage(sys.stderr)
+        sys.stderr.write(f"{self.prog}: error: {message}\n")
+        
+        hint_cmd = self.prog
+        # If the prog is already subcommand-specific (e.g. 'tff lint'), use it.
+        # Otherwise, check the arguments to see if a subcommand was targetted.
+        if hint_cmd == "tff" and TFFArgumentParser._current_argv is not None:
+            for sub in ("lint", "health", "info", "help"):
+                if sub in TFFArgumentParser._current_argv:
+                    hint_cmd = f"tff {sub}"
+                    break
+        elif hint_cmd == "tff":
+            for sub in ("lint", "health", "info", "help"):
+                if sub in sys.argv:
+                    hint_cmd = f"tff {sub}"
+                    break
+
+        sys.stderr.write(f"For help, try '{hint_cmd} --help'\n")
+        self.exit(2)
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
+    TFFArgumentParser._current_argv = argv
+    parser = TFFArgumentParser(
         prog="tff",
         description="Run Transformation Fitness Function (tff) checks",
     )
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(dest="command", required=True, parser_class=TFFArgumentParser)
 
     lint_parser = subparsers.add_parser("lint", help="Run all enabled fitness checks")
     lint_parser.add_argument(
@@ -150,7 +176,112 @@ def main(argv: list[str] | None = None) -> int:
         help="Exit non-zero when overall health score is below this threshold (0-100)",
     )
 
+    # Info subcommand
+    info_parser = subparsers.add_parser(
+        "info",
+        help="Show configuration and environment information",
+        description="Show configuration and environment information",
+    )
+    info_parser.add_argument(
+        "--project",
+        type=Path,
+        default=Path.cwd(),
+        help="Project root directory (default: current directory)",
+    )
+    info_parser.add_argument(
+        "--config",
+        default="fitness_functions.yaml",
+        help="Path to fitness_functions.yaml (relative to project root)",
+    )
+    info_parser.add_argument(
+        "--provider",
+        choices=["auto", "dbt", "sqlmesh"],
+        default="auto",
+        help="Pipeline engine provider (default: auto-detected)",
+    )
+
+    help_parser = subparsers.add_parser("help", help="Show help details for a command")
+    help_parser.add_argument(
+        "subcommand",
+        nargs="?",
+        choices=["lint", "health", "info"],
+        help="Specific command to get help for",
+    )
+
     args = parser.parse_args(argv)
+
+    if args.command == "help":
+        if args.subcommand == "lint":
+            lint_parser.print_help()
+        elif args.subcommand == "health":
+            health_parser.print_help()
+        elif args.subcommand == "info":
+            info_parser.print_help()
+        else:
+            parser.print_help()
+        return 0
+
+    if args.command == "info":
+        # Run info command: show diagnostics
+        from rich.console import Console
+        from rich.table import Table
+        import importlib.metadata as metadata
+
+        console = Console()
+        project_root = args.project.resolve()
+        provider = args.provider
+        if provider == "auto":
+            try:
+                provider = _detect_provider(project_root)
+            except Exception as e:
+                console.print(f"[red]Error detecting provider: {e}[/red]")
+                return 1
+        config_path = args.config
+        resolved_config = project_root / config_path if not Path(config_path).is_absolute() else Path(config_path)
+        config_exists = resolved_config.is_file()
+        console.print("[bold]TFF Info[/bold]")
+        table = Table(show_header=False, box=None)
+        table.add_row("Project root:", str(project_root))
+        table.add_row("Provider:", provider)
+        table.add_row("Config file:", f"{args.config} ({'found' if config_exists else 'missing'})")
+        if config_exists:
+            try:
+                cfg = load_fitness_config(project_root, config_path)
+                contract_path = resolve_project_path(cfg, cfg.contract_groups_path)
+                exclusions_path = resolve_project_path(cfg, cfg.exclusions_path)
+                table.add_row("Contract groups:", f"{contract_path} ({'found' if contract_path.exists() else 'missing'})")
+                table.add_row("Exclusions:", f"{exclusions_path} ({'found' if exclusions_path.exists() else 'missing'})")
+            except Exception as e:
+                console.print(f"[yellow]Failed to load config: {e}[/yellow]")
+        console.print(table)
+
+        console.print("\n[bold]Adapter Versions[/bold]")
+        def get_version(pkg: str) -> str:
+            try:
+                return metadata.version(pkg)
+            except Exception:
+                return "not installed"
+        ver_table = Table(show_header=False, box=None)
+        ver_table.add_row("tff-core", get_version("tff-core"))
+        ver_table.add_row("tff-dbt", get_version("tff-dbt"))
+        ver_table.add_row("tff-sqlmesh", get_version("tff-sqlmesh"))
+        console.print(ver_table)
+
+        prov_table = Table(show_header=False, box=None)
+        if provider == "dbt":
+            dbt_project = project_root / "dbt_project.yml"
+            manifest = project_root / "target" / "manifest.json"
+            prov_table.add_row("dbt_project.yml", f"{dbt_project} ({'found' if dbt_project.exists() else 'missing'})")
+            prov_table.add_row("manifest.json", f"{manifest} ({'found' if manifest.exists() else 'missing'})")
+        elif provider == "sqlmesh":
+            config_py = project_root / "config.py"
+            settings_yaml = project_root / "settings.yaml"
+            prov_table.add_row("config.py", f"{config_py} ({'found' if config_py.exists() else 'missing'})")
+            prov_table.add_row("settings.yaml", f"{settings_yaml} ({'found' if settings_yaml.exists() else 'missing'})")
+        if prov_table.row_count > 0:
+            console.print("\n[bold]Provider Files[/bold]")
+            console.print(prov_table)
+        return 0
 
     if args.command in ("lint", "health"):
         logging.basicConfig(level=logging.ERROR)
