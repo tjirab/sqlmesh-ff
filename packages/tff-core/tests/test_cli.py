@@ -248,6 +248,54 @@ def test_main_unhandled_command():
         assert exit_code == 1
 
 
+def test_help_subcommand(capsys):
+    # Test tff help
+    assert main(["help"]) == 0
+    captured = capsys.readouterr()
+    assert "Run Transformation Fitness Function (tff) checks" in captured.out
+
+    # Test tff help lint
+    assert main(["help", "lint"]) == 0
+    captured = capsys.readouterr()
+    assert "--fail-level" in captured.out
+
+    # Test tff help health
+    assert main(["help", "health"]) == 0
+    captured = capsys.readouterr()
+    assert "--fail-under" in captured.out
+
+
+def test_invalid_command_error_hint(capsys):
+    # Test tff foo
+    with pytest.raises(SystemExit) as excinfo:
+        main(["foo"])
+    assert excinfo.value.code == 2
+    captured = capsys.readouterr()
+    assert "invalid choice: 'foo'" in captured.err
+    assert "For help, try 'tff --help'" in captured.err
+
+
+def test_missing_command_error_hint(capsys):
+    # Test tff (no command)
+    with pytest.raises(SystemExit) as excinfo:
+        main([])
+    assert excinfo.value.code == 2
+    captured = capsys.readouterr()
+    assert "the following arguments are required: command" in captured.err
+    assert "For help, try 'tff --help'" in captured.err
+
+
+def test_subcommand_invalid_argument_error_hint(capsys):
+    # Test tff lint --invalid-option
+    with pytest.raises(SystemExit) as excinfo:
+        main(["lint", "--invalid-option"])
+    assert excinfo.value.code == 2
+    captured = capsys.readouterr()
+    assert "unrecognized arguments: --invalid-option" in captured.err
+    assert "For help, try 'tff lint --help'" in captured.err
+
+
+
 
 
 
