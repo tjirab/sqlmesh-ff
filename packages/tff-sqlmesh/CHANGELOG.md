@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.4](https://github.com/tjirab/tff/compare/tff-sqlmesh-v0.2.3...tff-sqlmesh-v0.2.4) (2026-06-29)
+
+
+### Bug Fixes
+
+* resolve target project adapter resolution and cross-environment imports ([#66](https://github.com/tjirab/tff/issues/66)) ([6b6a6c2](https://github.com/tjirab/tff/commit/6b6a6c22ffaf3137e106b17cd442cec1efe36bd2))
+
 ## [0.2.3](https://github.com/tjirab/tff/compare/tff-sqlmesh-v0.2.2...tff-sqlmesh-v0.2.3) (2026-06-28)
 
 
