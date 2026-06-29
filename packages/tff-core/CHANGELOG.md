@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0](https://github.com/tjirab/tff/compare/tff-core-v0.2.3...tff-core-v0.3.0) (2026-06-29)
+
+
+### Features
+
+* add tff info command and improve CLI help coverage ([#64](https://github.com/tjirab/tff/issues/64)) ([f8e78d7](https://github.com/tjirab/tff/commit/f8e78d7397a701c528dee4ae00bef5f6e65fd34c))
+* improve TFF CLI design system, headers, and alignments ([#69](https://github.com/tjirab/tff/issues/69)) ([a2ecef1](https://github.com/tjirab/tff/commit/a2ecef1ef379eb8a33f3a1636d9f2fa4d5d806be))
+
+
+### Bug Fixes
+
+* resolve target project adapter resolution and cross-environment imports ([#66](https://github.com/tjirab/tff/issues/66)) ([6b6a6c2](https://github.com/tjirab/tff/commit/6b6a6c22ffaf3137e106b17cd442cec1efe36bd2))
+
 ## [0.2.3](https://github.com/tjirab/tff/compare/tff-core-v0.2.2...tff-core-v0.2.3) (2026-06-28)
 
 
