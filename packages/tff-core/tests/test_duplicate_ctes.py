@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from tff.core.checks.duplicate_ctes import collect_duplicate_cte_findings
 from tff.core.config import FitnessFunctionsConfig
 from tff.core.context import set_ff_config
@@ -177,3 +179,48 @@ def test_duplicate_ctes_disabled():
     models = {"model1": model1, "model2": model2}
     findings = collect_duplicate_cte_findings(models, config)
     assert len(findings) == 0
+
+
+def test_duplicate_ctes_file_fallbacks(tmp_path: Path):
+    config = FitnessFunctionsConfig()
+    config.checks.duplicate_ctes.enabled = True
+    set_ff_config(config)
+
+    # 1. Nonexistent/invalid path
+    model_nonexistent = ModelRepresentation(
+        name="model1",
+        path="nonexistent.txt",
+        dialect="postgres",
+        query=None,
+    )
+    assert collect_duplicate_cte_findings({"m": model_nonexistent}, config) == []
+
+    # 2. Existing path with read exception
+    bad_file = tmp_path / "bad.sql"
+    bad_file.write_text("dummy", encoding="utf-8")
+    model_read_err = ModelRepresentation(
+        name="model2",
+        path=str(bad_file),
+        dialect="postgres",
+        query=None,
+    )
+
+    from unittest.mock import patch
+    with patch("tff.core.checks.duplicate_ctes.Path.read_text", side_effect=IOError("Read error")):
+        assert collect_duplicate_cte_findings({"m": model_read_err}, config) == []
+
+
+def test_duplicate_ctes_parse_exception():
+    config = FitnessFunctionsConfig()
+    config.checks.duplicate_ctes.enabled = True
+    set_ff_config(config)
+
+    # Invalid SQL syntax that sqlglot cannot parse
+    model_invalid_sql = ModelRepresentation(
+        name="model1",
+        path="models/marts/model1.sql",
+        dialect="postgres",
+        query="SELECT FROM WHERE BLA GROUP BY",
+    )
+    assert collect_duplicate_cte_findings({"m": model_invalid_sql}, config) == []
+
