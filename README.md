@@ -6,7 +6,22 @@
 Configurable fitness functions engine and linter for transformation projects. 
 
 TFF allows you to enforce architectural layout boundaries, layer structure policies, schema contracts, and code formatting rules across data pipelines. It ships with dedicated plugins for **SQLMesh** and **dbt** and outputs clean, color-coded lint reports to the terminal.
-<img width="1029" height="828" alt="Screenshot 2026-06-27 at 13 22 08" src="https://github.com/user-attachments/assets/77c8896f-b626-481e-90f1-b88fe8036448" />
+
+<img width="1280" height="708" alt="20260629_tff-health" src="https://github.com/user-attachments/assets/2302a3dc-595f-4726-94ba-6c2aaf838bd4" />
+
+<details>
+<summary>More screenshots</summary>
+
+#### tff lint
+<img width="1280" height="570" alt="20260629_tff-lint" src="https://github.com/user-attachments/assets/2abf306d-bfc1-4c1e-a67c-31a0c97a69c8" />
+
+#### tff info
+<img width="672" height="326" alt="20260629_tff-info" src="https://github.com/user-attachments/assets/8426540f-da9d-4bc1-8d73-ea12c0553c6c" />
+
+#### CTE fingerprinting demo
+<img width="1600" height="292" alt="20260630_cte-fingerprinting" src="https://github.com/user-attachments/assets/403976e8-e88b-48cc-a632-2273902fcea2" />
+
+</details>
 
 ---
 
