@@ -241,6 +241,41 @@ def test_main_lint_run_checks_error(mock_load_config, mock_get_runner, tmp_path:
     assert exit_code == 1
 
 
+@patch("tff.core.cli._get_runner")
+@patch("tff.core.cli.load_fitness_config")
+@patch("tff.core.cli.render_lint_report")
+def test_main_lint_group_by_connascence(
+    mock_render, mock_load_config, mock_get_runner, tmp_path: Path
+):
+    """Test that --group-by connascence is forwarded to render_lint_report."""
+    mock_runner = MagicMock()
+    mock_runner.run_all_checks.return_value = ([], 5, ["rules"])
+    mock_get_runner.return_value = mock_runner
+    mock_render.return_value = True
+
+    project_str = str(tmp_path)
+    exit_code = main(
+        [
+            "lint",
+            "--project",
+            project_str,
+            "--provider",
+            "dbt",
+            "--group-by",
+            "connascence",
+        ]
+    )
+
+    assert exit_code == 0
+    mock_render.assert_called_once_with(
+        [],
+        models_checked=5,
+        executed_checks=["rules"],
+        fail_level="error",
+        group_by="connascence",
+    )
+
+
 def test_cli_main_block(tmp_path: Path):
     import runpy
 
