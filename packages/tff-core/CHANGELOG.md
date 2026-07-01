@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/tjirab/tff/compare/tff-core-v0.4.0...tff-core-v0.5.0) (2026-07-01)
+
+
+### Features
+
+* `tff health` domain filtering and grouping ([#90](https://github.com/tjirab/tff/issues/90)) ([0fc2441](https://github.com/tjirab/tff/commit/0fc2441c0070fc84538007c4801a3fd5b90f83c3))
+
 ## [0.4.0](https://github.com/tjirab/tff/compare/tff-core-v0.3.0...tff-core-v0.4.0) (2026-06-30)
 
 
