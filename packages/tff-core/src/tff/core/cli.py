@@ -179,6 +179,23 @@ def main(argv: list[str] | None = None) -> int:
         default=0.0,
         help="Exit non-zero when overall health score is below this threshold (0-100)",
     )
+    health_parser.add_argument(
+        "--scope",
+        nargs="+",
+        metavar="PATH_PREFIX",
+        default=None,
+        help=(
+            "Restrict the health report to models whose path starts with one of the "
+            "given prefixes (e.g. models/sources or models/marts/marketing)."
+        ),
+    )
+    health_parser.add_argument(
+        "--group-by",
+        choices=["connascence", "domain"],
+        default="connascence",
+        dest="group_by",
+        help="How to group the health breakdown (default: connascence)",
+    )
 
     # Info subcommand
     info_parser = subparsers.add_parser(
@@ -466,8 +483,13 @@ def main(argv: list[str] | None = None) -> int:
             # health command
             from tff.core.health import calculate_health_scores, render_health_report
 
-            scores = calculate_health_scores(findings, models_checked, config, provider)
-            render_health_report(scores, config, provider)
+            scope: list[str] | None = getattr(args, "scope", None)
+            group_by: str = getattr(args, "group_by", "connascence")
+
+            scores = calculate_health_scores(
+                findings, models_checked, config, provider, scope=scope
+            )
+            render_health_report(scores, config, provider, group_by=group_by)
 
             overall_score = scores["overall_score"]
             if args.fail_under > 0.0 and overall_score < args.fail_under:
