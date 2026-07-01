@@ -6,7 +6,22 @@
 Configurable fitness functions engine and linter for transformation projects. 
 
 TFF allows you to enforce architectural layout boundaries, layer structure policies, schema contracts, and code formatting rules across data pipelines. It ships with dedicated plugins for **SQLMesh** and **dbt** and outputs clean, color-coded lint reports to the terminal.
-<img width="1029" height="828" alt="Screenshot 2026-06-27 at 13 22 08" src="https://github.com/user-attachments/assets/77c8896f-b626-481e-90f1-b88fe8036448" />
+
+<img width="1280" height="708" alt="20260629_tff-health" src="https://github.com/user-attachments/assets/2302a3dc-595f-4726-94ba-6c2aaf838bd4" />
+
+<details>
+<summary>More screenshots</summary>
+
+#### tff lint
+<img width="1280" height="570" alt="20260629_tff-lint" src="https://github.com/user-attachments/assets/2abf306d-bfc1-4c1e-a67c-31a0c97a69c8" />
+
+#### tff info
+<img width="672" height="326" alt="20260629_tff-info" src="https://github.com/user-attachments/assets/8426540f-da9d-4bc1-8d73-ea12c0553c6c" />
+
+#### CTE fingerprinting demo
+<img width="1600" height="292" alt="20260630_cte-fingerprinting" src="https://github.com/user-attachments/assets/403976e8-e88b-48cc-a632-2273902fcea2" />
+
+</details>
 
 ---
 
@@ -16,6 +31,7 @@ Setup and usage details differ depending on your pipeline engine. Refer to the c
 
 * 📐 **SQLMesh Integration**: See [docs/sqlmesh.md](docs/sqlmesh.md)
 * ⚡ **dbt Integration**: See [docs/dbt.md](docs/dbt.md)
+* 🔍 **Rules & Checks Reference**: See [docs/rules_and_checks.md](docs/rules_and_checks.md)
 * 🏗️ **Architecture & Contributor Guide**: See [docs/contributing.md](docs/contributing.md)
 
 ---
@@ -110,24 +126,27 @@ tff lint --help
 
 ## Core Features
 
-TFF runs two categories of quality guardrails:
+TFF runs two categories of quality guardrails (for full configuration details, see the [Rules & Checks Reference](docs/rules_and_checks.md)):
 
 ### 1. Architectural Checks
-* **Layer integrity**: Prevent models in upstream layers (e.g. `marts`) from depending on downstream/raw layers.
-* **Custom exclusions**: Enforce custom domain isolation boundaries (e.g., prevent `marts/finance` from depending on `marts/marketing`).
-* **Schema contracts**: Ensure matching structures between model schemas (e.g., source tables and target core columns).
-* **Dependency graph**: Track DAG metrics and fail if model fan-in or fan-out exceeds defined thresholds.
-* **Duplicate CTEs**: Detect duplicate complex transformation logic in CTEs across different models (Connascence of Algorithm).
+* **[Layer integrity](docs/rules_and_checks.md#layer-integrity-layer_integrity)**: Prevent models in upstream layers (e.g. `marts`) from depending on downstream/raw layers.
+* **[Custom exclusions](docs/rules_and_checks.md#custom-exclusions-custom_exclusions)**: Enforce custom domain isolation boundaries (e.g., prevent `marts/finance` from depending on `marts/marketing`).
+* **[Schema contracts](docs/rules_and_checks.md#schema-contracts-schema_contracts)**: Ensure matching structures between model schemas (e.g., source tables and target core columns).
+* **[Dependency graph](docs/rules_and_checks.md#dependency-graph-dependency_graph)**: Track DAG metrics and fail if model fan-in or fan-out exceeds defined thresholds.
+* **[Materialization depth](docs/rules_and_checks.md#materialization-depth-materialization_depth)**: Prevent deep nesting of views that degrades query performance.
+* **[Duplicate CTEs](docs/rules_and_checks.md#duplicate-ctes-duplicate_ctes)**: Detect duplicate complex transformation logic in CTEs across different models (Connascence of Algorithm).
 
 ### 2. Linter Rules
-* **Ban `SELECT *`**: Require explicit columns to reduce upstream coupling.
-* **No positional GROUP BY/ORDER BY**: Prevent using ordinal indexes (e.g., `GROUP BY 1, 2`) in queries.
-* **Classification macros**: Require using standardized macros instead of inline CASE statements for classification fields.
-* **Sql complexity**: Limits CTE count, join count, decision points, and line count in SQL.
-* **Mart naming**: Ensure model filenames match their subfolder namespaces.
-* **Metadata checks**: Enforce owners, descriptions, grains, unique assertions, and non-null constraints on models.
-* **Filename equals model name**: Flags model name mismatch.
-* **Environment agnostic references**: Ban hardcoded environment/catalog prefixes in queries.
+* **[Ban `SELECT *`](docs/rules_and_checks.md#ban-select-ban_select_star)**: Require explicit columns to reduce upstream coupling.
+* **[No positional GROUP BY/ORDER BY](docs/rules_and_checks.md#no-positional-group-byorder-by-no_positional_group_by_or_order_by)**: Prevent using ordinal indexes (e.g., `GROUP BY 1, 2`) in queries.
+* **[Classification macros](docs/rules_and_checks.md#classification-macros-classification_macros)**: Require using standardized macros instead of inline CASE statements for classification fields.
+* **[Sql complexity](docs/rules_and_checks.md#sql-complexity-sql_complexity)**: Limits CTE count, join count, decision points, and line count in SQL.
+* **[Mart naming](docs/rules_and_checks.md#mart-naming-mart_naming)**: Ensure model filenames match their subfolder namespaces.
+* **[Column names](docs/rules_and_checks.md#column-names-column_names)**: Avoid deprecated or forbidden patterns in column names.
+* **[Column types](docs/rules_and_checks.md#column-types-column_types)**: Enforce expected types for matching column name patterns.
+* **[Metadata checks](docs/rules_and_checks.md#metadata-metadata)**: Enforce owners, descriptions, grains, unique assertions, and non-null constraints on models.
+* **[Filename equals model name](docs/rules_and_checks.md#filename-equals-model-name-filename_equals_modelname)**: Flags model name mismatch.
+* **[Environment agnostic references](docs/rules_and_checks.md#environment-agnostic-references-environment_agnostic_references)**: Ban hardcoded environment/catalog prefixes in queries.
 
 ---
 
